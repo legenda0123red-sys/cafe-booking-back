@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
@@ -9,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { LoginDto } from '../dto/login.dto';
+import { ChangePasswordDto } from '../dto/update-user.dto';
 @Injectable()
 export class AuthService {
   constructor(
@@ -96,5 +98,35 @@ export class AuthService {
         role: 'ADMIN',
       },
     });
+  }
+
+  async changePass(userId: number, body: ChangePasswordDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Пользователь не найден');
+    }
+
+    const isPassValid = await bcrypt.compare(
+      body.currentPassword,
+      user.password,
+    );
+
+    if (!isPassValid) {
+      throw new UnauthorizedException('Неверный текущий пароль');
+    }
+
+    const hashedPass = await bcrypt.hash(body.newPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPass },
+    });
+
+    return {
+      message: "Пароль успешно изменен!"
+    }
   }
 }

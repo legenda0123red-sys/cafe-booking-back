@@ -1,9 +1,24 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { LoginDto } from '../dto/login.dto';
 import { JwtAuthGuard } from './auth.guard';
-
+import { ChangePasswordDto } from '../dto/update-user.dto';
+interface AuthenticatedRequest extends Request {
+  user: {
+    id: number;
+    email: string;
+    role: string;
+  };
+}
 @Controller('auth')
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
@@ -34,4 +49,11 @@ export class AuthController {
   ) {
     return this.auth.getMe(Number(req.user.sub));
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('change-pass')
+  async changePass(    @Req() req: AuthenticatedRequest,
+    @Body() body: ChangePasswordDto) {
+      return this.auth.changePass(req.user.id, body)
+    }
 }
